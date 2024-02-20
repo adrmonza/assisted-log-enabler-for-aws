@@ -994,6 +994,137 @@ def wafv2_logs(OrgAccountIdList, organization_id, included_accounts, excluded_ac
                 except Exception as exception_handle:
                     logging.error(exception_handle)
 
+
+
+def ava_logs(OrgAccountIdList, organization_id, included_accounts, excluded_accounts):  
+    #To-Do:
+    # - Add ability to pass in pre-existing buckets.  If bucket name is passed in, will need to have bucket owner passed in too.
+
+    """Function to turn on AVA Logging"""
+    account_number = sts.get_caller_identity()["Account"]
+    ava_log_configs = False
+    bucket_name = ""                    #Ability to set pre-existing buckets is not supported yet.
+    account_number = get_account_number()
+    bucket_owner = account_number       #Setting to account owner because the ability to pass pre-existing buckets is not yet supported.
+  
+    
+    # Check Web ACLs in every account for logging and enable it if not already enabled
+    for org_account in OrgAccountIdList:
+        if excluded_accounts != 'none' and org_account in excluded_accounts:
+            continue
+        elif included_accounts == 'all' or org_account in included_accounts:
+            for aws_region in region_list:
+                ec2 = boto3.client('ec2', region_name=aws_region)
+                logging.info("Checking for AVA Logging in the account " + account_number + ", region " + aws_region)
+            
+                AVAList: list = [] # list of all Verified Access Instance ARNs
+                AVALogList: list = [] # list of Verified Access Instance ARNs with logging enabled
+                AVANoLogList: list = [] # list of Verified Access Instance ARNs to enable logging
+                
+                # Get regional AVA Web ACLs
+                logging.info("List AVA Instances API Call for " + aws_region)
+                
+                    #Switching to pagination. It's exceedingly unlikely that this will ever need to paginate, but let's do the right thing.
+                try:
+                    paginator = ec2.get_paginator('describe_verified_access_instances')
+                    page_iterator = paginator.paginate()
+                    for page in page_iterator:
+                        for instance in page['VerifiedAccessInstances']:        #Get the Verified Access IDs.
+                            AVAList.append(instance['VerifiedAccessInstanceId'])
+                
+                    print("Found " + str(len(AVAList)) + " AVA Instances")
+                    logging.info("List AVA Instance Logging Configurations API Call")
+                    if len(AVAList) > 0:
+                        paginator = ec2.get_paginator('describe_verified_access_instance_logging_configurations')
+                        page_iterator = paginator.paginate(VerifiedAccessInstanceIds=AVAList)
+                        for page in page_iterator:
+                            for log_config in page['LoggingConfigurations']:
+                                #print(log_config)
+                                #print(['VerifiedAccessInstanceId'])
+                                #print(log_config['AccessLogs'])
+                                if log_config['AccessLogs']['S3']['Enabled'] == False and log_config['AccessLogs']['CloudWatchLogs']['Enabled'] == False and log_config['AccessLogs']['KinesisDataFirehose']['Enabled'] == False:
+                                    ava_log_configs = True
+                                    AVANoLogList.append(log_config['VerifiedAccessInstanceId'])
+                                    print(log_config['VerifiedAccessInstanceId'])
+                                else:
+                                    AVALogList.append(log_config['VerifiedAccessInstanceId'])
+                    print("Found " + str(len(AVALogList)) + " AVA Instance with logging configured.")
+                    print("Found " + str(len(AVANoLogList)) + " AVA Instances without logging configured.")
+                
+                except Exception as exception_handle:
+                    logging.error(exception_handle)
+
+                # # If an S3 bucket hasn't been created yet, create one                
+                if ava_log_configs == True and bucket_name == "":
+                    logging.info("Creating S3 bucket for AVA logs enabled by Assisted Log Enabler.")
+                    unique_end = random_string_generator()
+                    bucket_name = "aws-ava-logs-ale-" + account_number + "-" + unique_end
+                    logging.info("CreateBucket API Call")
+                    s3.create_bucket(Bucket=bucket_name)
+                    logging.info("Bucket " + bucket_name + " created.")
+                    bucket_arn = "arn:aws:s3:::" + bucket_name
+                    
+                    logging.info("Setting lifecycle policy.")
+                    logging.info("PutBucketLifecycleConfiguration API Call")
+                    try:
+                        s3.put_bucket_lifecycle_configuration(
+                            Bucket=bucket_name,
+                            LifecycleConfiguration={
+                                'Rules': [
+                                    {
+                                        'Expiration': {
+                                            'Days': 365
+                                        },
+                                        'Status': 'Enabled',
+                                        'Prefix': '',
+                                        'ID': 'LogStorage',
+                                        'Transitions': [
+                                            {
+                                                'Days': 90,
+                                                'StorageClass': 'INTELLIGENT_TIERING'
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        )
+                        logging.info("Setting the S3 bucket Public Access to Blocked")
+                        logging.info("PutPublicAccessBlock API Call")
+                        bucket_private = s3.put_public_access_block(
+                            Bucket=bucket_name,
+                            PublicAccessBlockConfiguration={
+                                'BlockPublicAcls': True,
+                                'IgnorePublicAcls': True,
+                                'BlockPublicPolicy': True,
+                                'RestrictPublicBuckets': True
+                            },
+                        )
+                    except Exception as exception_handle:
+                        logging.error(exception_handle)
+                        
+                if ava_log_configs == True:             #Bucket name will always be non null. Either it is passed in, or else it is created above.
+                    for AVAInstanceId in AVANoLogList:
+                        logging.info("Setting logging configuration for: " + AVAInstanceId)
+                        response = ec2.modify_verified_access_instance_logging_configuration(
+                            VerifiedAccessInstanceId=AVAInstanceId,
+                            AccessLogs={
+                                'S3': {
+                                    'Enabled': True,
+                                    'BucketName': bucket_name,
+                                    'BucketOwner': bucket_owner
+                                },
+                                'IncludeTrustContext': True
+                            }
+                        )
+                        if response['LoggingConfiguration']['AccessLogs']['S3']['Enabled'] == True:
+                            logging.info("Logging for " + AVAInstanceId + " set successfully.")
+                else:
+                    logging.info("No AVA Instances to enable logging for in account " + account_number + ", region " + aws_region + ".")
+                
+
+
+
+
 def run_eks(included_accounts='all', excluded_accounts='none'):
     """Function that runs the defined EKS logging code"""
     OrgAccountIdList, organization_id = org_account_grab()
@@ -1061,6 +1192,12 @@ def run_wafv2_logs(included_accounts='all', excluded_accounts='none'):
     """Function that runs the defined WAFv2 Logging code"""
     OrgAccountIdList, organization_id = org_account_grab()
     wafv2_logs(OrgAccountIdList, organization_id, included_accounts, excluded_accounts)
+    logging.info("This is the end of the script. Please feel free to validate that logs have been turned on.")
+
+def run_ava_logs(included_accounts='all', excluded_accounts='none'):
+    """Function that runs the defined AVA Logging code"""
+    OrgAccountIdList, organization_id = org_account_grab()
+    ava_logs(OrgAccountIdList, organization_id, included_accounts, excluded_accounts)
     logging.info("This is the end of the script. Please feel free to validate that logs have been turned on.")
 
 def lambda_handler(event, context, bucket_name='default', included_accounts='all', excluded_accounts='none'):
