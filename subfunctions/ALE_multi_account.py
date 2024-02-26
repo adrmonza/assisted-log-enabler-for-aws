@@ -1021,7 +1021,7 @@ def ava_logs(OrgAccountIdList, organization_id, included_accounts, excluded_acco
                 AVALogList: list = [] # list of Verified Access Instance ARNs with logging enabled
                 AVANoLogList: list = [] # list of Verified Access Instance ARNs to enable logging
                 
-                # Get regional AVA Web ACLs
+                # Get AVA instances for the region.
                 logging.info("List AVA Instances API Call for " + aws_region)
                 
                     #Switching to pagination. It's exceedingly unlikely that this will ever need to paginate, but let's do the right thing.
