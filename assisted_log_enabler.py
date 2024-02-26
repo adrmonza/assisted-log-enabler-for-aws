@@ -193,6 +193,8 @@ def assisted_log_enabler():
             ALE_cleanup_single.run_guardduty_cleanup()
         elif args.single_wafv2:
             ALE_cleanup_single.run_wafv2_cleanup()
+        elif args.single_ava:
+            ALE_cleanup_single.run_ava_cleanup()
         elif args.single_all:
             ALE_cleanup_single.lambda_handler(event, context)
         else:

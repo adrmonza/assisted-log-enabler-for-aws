@@ -239,7 +239,7 @@ usage: assisted_log_enabler.py [-h] [--mode MODE] [--bucket BUCKET]
                                [--exclude_accounts ACCOUNT_NUMBERS] [--all]
                                [--eks] [--vpcflow] [--r53querylogs] [--s3logs]
                                [--lblogs] [--cloudtrail] [--guardduty]
-                               [--wafv2] [--single_r53querylogs]
+                               [--wafv2] [--ava] [--single_r53querylogs]
                                [--single_cloudtrail] [--single_vpcflow]
                                [--single_all] [--single_s3logs]
                                [--single_lblogs] [--single_guardduty]
@@ -285,6 +285,7 @@ Single & Multi Account Options:
                         S3 bucket. Will used specified bucket. WARNING: This
                         creates a KMS Key to export findings.
   --wafv2               Turns on AWS WAFv2 Logs.
+  --ava                 Turns on Amazon Verified Access Logs.
 
 Cleanup Options:
   Use these flags to choose which resources you want to turn logging off
@@ -307,6 +308,8 @@ Cleanup Options:
                         Log Enabler for AWS.
   --single_wafv2        Removes AWS WAFv2 Logging Configurations created by
                         Assisted Log Enabler for AWS.
+  --single_ava          Removes Amazo Verified Access Logging Configurations
+                        created by Assisted Log Enabler for AWS.
 
 Dry Run Options:
   Use these flags to run Assisted Log Enabler for AWS in Dry Run mode.

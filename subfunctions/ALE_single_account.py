@@ -861,25 +861,21 @@ def ava_logs():
             for page in page_iterator:
                 for instance in page['VerifiedAccessInstances']:        #Get the Verified Access IDs.
                     AVAList.append(instance['VerifiedAccessInstanceId'])
-        
-            print("Found " + str(len(AVAList)) + " AVA Instances")
-            logging.info("List AVA Instance Logging Configurations API Call")
+            
             if len(AVAList) > 0:
+                logging.info("List AVA Instance Logging Configurations API Call")    
                 paginator = ec2.get_paginator('describe_verified_access_instance_logging_configurations')
                 page_iterator = paginator.paginate(VerifiedAccessInstanceIds=AVAList)
                 for page in page_iterator:
                     for log_config in page['LoggingConfigurations']:
-                        #print(log_config)
-                        #print(['VerifiedAccessInstanceId'])
-                        #print(log_config['AccessLogs'])
+
                         if log_config['AccessLogs']['S3']['Enabled'] == False and log_config['AccessLogs']['CloudWatchLogs']['Enabled'] == False and log_config['AccessLogs']['KinesisDataFirehose']['Enabled'] == False:
                             ava_log_configs = True
                             AVANoLogList.append(log_config['VerifiedAccessInstanceId'])
-                            print(log_config['VerifiedAccessInstanceId'])
                         else:
                             AVALogList.append(log_config['VerifiedAccessInstanceId'])
-            print("Found " + str(len(AVALogList)) + " AVA Instance with logging configured.")
-            print("Found " + str(len(AVANoLogList)) + " AVA Instances without logging configured.")
+            logging.info(str(len(AVALogList)) + " Verified Access Instances in " + aws_region +  " with logging configured.")
+            logging.info(str(len(AVANoLogList)) + " Verified Access Instances in " + aws_region + " without logging configured.")
         
         except Exception as exception_handle:
             logging.error(exception_handle)

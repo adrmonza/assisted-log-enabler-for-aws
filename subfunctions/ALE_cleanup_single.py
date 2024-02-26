@@ -370,6 +370,43 @@ def waf_cleanup():
         except Exception as exception_handle:
             logging.error(exception_handle)
 
+def ava_cleanup():
+    """Function to cleanup AVA Logging Configurations"""
+    logging.info("Cleaning up AVA logging previously enabled by Assisted Log Enabler.")
+    AVAList: list = [] # list of all Verified Access Instance ARNs
+
+    for aws_region in region_list:
+        ec2 = boto3.client('ec2', region_name=aws_region)
+        
+        try:
+            logging.info("List AVA Instance Logging Configurations API Call for " + aws_region)   #Notify the user of the region. 
+            paginator = ec2.get_paginator('describe_verified_access_instances')      #Using pagination.  It's unlikely that this API will every need pagination, but it's a best practice regardless.
+            page_iterator = paginator.paginate()
+            for page in page_iterator:
+                for instance in page['VerifiedAccessInstances']:        #Get the Verified Access IDs.
+                    AVAList.append(instance['VerifiedAccessInstanceId'])   
+
+            logging.info("Found " + str(len(AVAList)) + " AVA Instances in " + aws_region)
+            
+            if len(AVAList) > 0:
+                paginator = ec2.get_paginator('describe_verified_access_instance_logging_configurations')
+                page_iterator = paginator.paginate(VerifiedAccessInstanceIds=AVAList)
+                for page in page_iterator:
+                    for log_config in page['LoggingConfigurations']:
+                        if log_config['AccessLogs']['S3']['Enabled'] == True and ("aws-ava-logs-ale" in log_config['AccessLogs']['S3']['BucketName']):
+                            logging.info("Verified Access Instance: " + log_config['VerifiedAccessInstanceId'] + " has ALE logging enabled.  Removing...")
+                            del log_config['AccessLogs']['S3']['DeliveryStatus']
+                            del log_config['AccessLogs']['S3']['BucketName']
+                            del log_config['AccessLogs']['S3']['BucketOwner']
+                            log_config['AccessLogs']['S3']['Enabled'] = False #Keep everything the same, except set the S3 logging to False.  This preserves Kinesis and CloudWatch logging, if it has been enabled.
+                            
+                            response = ec2.modify_verified_access_instance_logging_configuration(VerifiedAccessInstanceId=log_config['VerifiedAccessInstanceId'], AccessLogs=log_config['AccessLogs']) # Remove logging and store the response
+                            if response['LoggingConfiguration']['AccessLogs']['S3']['Enabled'] == False and response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                                logging.info("Successfully removed ALE logging from Verified Access Instance: " + response['LoggingConfiguration']['VerifiedAccessInstanceId'])  #Log if logging has successfully been removed.
+        
+        except Exception as exception_handle:
+                logging.error(exception_handle)                    
+
 def run_vpcflow_cleanup():
     """Function to run the vpcflow_cleanup function"""
     vpcflow_cleanup()
@@ -404,6 +441,11 @@ def run_wafv2_cleanup():
     """Function to run the wafv2_cleanup function"""
     waf_cleanup()
     logging.info("This is the end of the script. Please feel free to validate that logging resources have been cleaned up.")
+
+def run_ava_cleanup():
+    """Function to run the ava cleanup function"""
+    ava_cleanup()
+    logging.info("This is the end of the script. Please feel free to validate that logging  resources have been cleaned up.")
 
 def lambda_handler(event, context):
     """Function that runs all of the previously defined functions"""
