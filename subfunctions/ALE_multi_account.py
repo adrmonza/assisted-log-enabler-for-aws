@@ -1035,7 +1035,6 @@ def ava_logs(OrgAccountIdList, organization_id, included_accounts, excluded_acco
                     if len(AVAList) > 0:
                         logging.info("List AVA Instance Logging Configurations API Call")    
                         paginator = ec2.get_paginator('describe_verified_access_instance_logging_configurations')
-                        page_iterator = paginator.paginate(VerifiedAccessInstanceIds=AVAList)
                         for page in page_iterator:
                             for log_config in page['LoggingConfigurations']:
 

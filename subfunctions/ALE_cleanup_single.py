@@ -406,6 +406,7 @@ def ava_cleanup():
         
         except Exception as exception_handle:
                 logging.error(exception_handle)                    
+        AVAList.clear()   #Clear the list         
 
 def run_vpcflow_cleanup():
     """Function to run the vpcflow_cleanup function"""
