@@ -354,6 +354,8 @@ python3 assisted_log_enabler.py --mode single_account --lblogs
 python3 assisted_log_enabler.py --mode single_account --guardduty
 # NEW! For WAFv2 Logs:
 python3 assisted_log_enabler.py --mode single_account --wafv2
+# NEW! For Amazon Verified Access Logs:
+python3 assisted_log_enabler.py --mode single_account --ava
 ```
 
 ### Step-by-Step Instructions (for running in AWS CloudShell, multi account mode)
@@ -419,6 +421,8 @@ python3 assisted_log_enabler.py --mode multi_account --lblogs
 python3 assisted_log_enabler.py --mode multi_account --guardduty
 # NEW! For WAFv2 Logs:
 python3 assisted_log_enabler.py --mode multi_account --wafv2
+# NEW! For Amazon Verified Access Logs:
+python3 assisted_log_enabler.py --mode multi_account --ava
 
 ```
 
@@ -489,6 +493,8 @@ python3 assisted_log_enabler.py --mode cleanup --single_lblogs
 python3 assisted_log_enabler.py --mode cleanup --single_guardduty
 # NEW! To remove WAFv2 logging created by Assisted Log Enabler for AWS (single account):
 python3 assisted_log_enabler.py --mode cleanup --single_wafv2
+# NEW! To remove Amazon Verified Access logging created by Assisted Log Enabler for AWS (single account):
+python3 assisted_log_enabler.py --mode cleanup --single_ava
 ```
 
 ## Shared Responsibility Model
@@ -512,6 +518,7 @@ For answers to cost-related questions involved with this solution, refer to the 
 * Elastic Load Balancing Logging: [Link](https://aws.amazon.com/elasticloadbalancing/pricing/)
 * GuardDuty Pricing: [Link](https://aws.amazon.com/guardduty/pricing/)
 * WAFv2 Logging Pricing: [Link](https://docs.aws.amazon.com/waf/latest/developerguide/logging-pricing.html)
+* Amazon Verified Access Logging Pricing: [Link](https://aws.amazon.com/verified-access/pricing/)
 
 
 ## Feedback
